@@ -24,43 +24,44 @@ jobs:
   # Job for applying Terraform configurations
   terraform_apply:
     name: "Terraform_apply"
-    # Condition to run this job only when 'Terraform_apply' is selected
+    # Run this job only when 'Terraform_apply' is selected
     if: ${{ github.event.inputs.action == 'Terraform_apply' }}
-    # Specifies the type of runner to use
+    # Type of runner to use
     runs-on: ubuntu-latest
 
     steps:
       # Step 1: Check out the repository code
       - name: Checkout repository
-        uses: actions/checkout@v2  # NOTE: works, but can upgrade to @v4
+        uses: actions/checkout@v2  # (v4 is newer, v2 is fine for class)
 
       # Step 2: Set up AWS credentials for authentication
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2  # NOTE: works, but v4 is newer
+        uses: aws-actions/configure-aws-credentials@v2  # (v4 is newer, v2 is fine)
         with:
           # Using GitHub secrets for secure credential storage
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} # Secret variable
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}     # Secret variable
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # Secret variable
           aws-region: ${{ env.AWS_REGION }}  # Reference the repository variable
 
       # Step 3: Install Terraform
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2.0.2  # NOTE: can upgrade to @v3
+        uses: hashicorp/setup-terraform@v2.0.2  # (v3 is newer, v2.0.2 is fine)
         with:
-          terraform_version: 1.1.9 # Specifies Terraform version to use
+          terraform_version: 1.1.9  # Specifies Terraform version to use
           terraform_wrapper: false
 
       # Step 4: Initialize Terraform working directory
+      # NOTE: include -migrate-state so backend migration can proceed non-interactively
       - name: Terraform Init
-        run: terraform init -input=false # Added -input=false to avoid prompts
+        run: terraform init -migrate-state -input=false
 
       # Step 5: Preview the infrastructure changes
       - name: Terraform Plan
-        run: terraform plan -no-color # Added -no-color for clean logs
+        run: terraform plan -no-color
 
       # Step 6: Apply the infrastructure changes
       - name: Terraform Apply
-        run: terraform apply -auto-approve -input=false # Added -input=false
+        run: terraform apply -auto-approve -input=false
 
       # Step 7: Show Terraform outputs (optional)
       - name: Terraform Output
@@ -69,9 +70,9 @@ jobs:
   # Job for destroying Terraform-managed infrastructure
   terraform_destroy:
     name: "Terraform_destroy"
-    # Condition to run this job only when 'Terraform_destroy' is selected
+    # Run this job only when 'Terraform_destroy' is selected
     if: ${{ github.event.inputs.action == 'Terraform_destroy' }}
-    # Specifies the type of runner to use
+    # Type of runner to use
     runs-on: ubuntu-latest
 
     steps:
@@ -95,8 +96,9 @@ jobs:
           terraform_wrapper: false
 
       # Step 4: Initialize Terraform working directory
+      # NOTE: include -migrate-state here too, so destroy finds the S3 state
       - name: Terraform Init
-        run: terraform init -input=false
+        run: terraform init -migrate-state -input=false
 
       # Step 5: Destroy the infrastructure
       - name: Terraform Destroy
