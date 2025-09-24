@@ -197,6 +197,5 @@ terraform {
     key    = "wordpress/terraform.tfstate"
     region = "us-east-1"                # <-- your region
     encrypt      = true                 # optional but good
-    use_lockfile = true                 # S3-native locking
   }
 }
