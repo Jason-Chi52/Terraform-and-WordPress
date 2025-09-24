@@ -12,6 +12,11 @@ on:
         options:
         - Terraform_apply
         - Terraform_destroy
+        default: Terraform_apply 
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  TF_IN_AUTOMATION: true
+  TF_INPUT: 0
 
 jobs:
   # Job for applying Terraform configurations
@@ -35,7 +40,7 @@ jobs:
           # Using GitHub secrets for secure credential storage
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} # Secret variable
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # Secret variable
-          aws-region: ${{ vars.AWS_REGION }}  # Reference the repository variable
+          aws-region: ${{ env.AWS_REGION }}  # Reference the repository variable
 
       # Step 3: Install Terraform
       - name: Setup Terraform
