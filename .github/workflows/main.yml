@@ -39,9 +39,9 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2  # (v4 is newer)
         with:
           # Using GitHub secrets for secure credential storage
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}       # Secret variable
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}# Secret variable
-          aws-region: ${{ env.AWS_REGION }}  # Reference the repository variable
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}        # Secret variable
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # Secret variable
+          aws-region: ${{ env.AWS_REGION }}                           # Reference the repository variable
 
       # Step 3: Install Terraform
       - name: Setup Terraform
@@ -67,7 +67,11 @@ jobs:
       - name: Terraform Apply
         run: terraform apply -auto-approve -input=false
 
-      # Step 7: Show Terraform outputs (optional)
+      # Step 7: Show what ended up in state (proof Apply worked)
+      - name: List state resources (after apply)
+        run: terraform state list || echo "No resources in state"
+
+      # Step 8: Show Terraform outputs (optional)
       - name: Terraform Output
         run: terraform output -no-color || true
 
@@ -108,6 +112,10 @@ jobs:
       - name: Terraform Init
         run: terraform init -input=false
 
-      # Step 5: Destroy the infrastructure
+      # Step 5: Show what will be destroyed (proof state is loaded)
+      - name: List state resources (before destroy)
+        run: terraform state list || echo "No resources in state"
+
+      # Step 6: Destroy the infrastructure
       - name: Terraform Destroy
         run: terraform destroy -auto-approve -input=false
