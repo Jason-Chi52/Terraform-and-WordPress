@@ -1,0 +1,38 @@
+#!/bin/bash
+set -e
+
+# Update
+yum update -y
+
+# Install Apache, PHP and MySQL connector
+yum install -y httpd php php-mysqlnd wget tar
+
+# Start & enable Apache
+systemctl start httpd
+systemctl enable httpd
+
+# Get WordPress
+cd /var/www/html
+wget https://wordpress.org/latest.tar.gz
+tar -xzf latest.tar.gz
+mv wordpress/* .
+rm -rf wordpress latest.tar.gz
+
+# Permissions
+chown -R apache:apache /var/www/html
+chmod -R 755 /var/www/html
+
+# Configure wp-config.php
+cp wp-config-sample.php wp-config.php
+
+# Substitute DB values provided by Terraform
+sed -i "s/database_name_here/${DB_NAME}/" wp-config.php
+sed -i "s/username_here/${DB_USER}/" wp-config.php
+sed -i "s/password_here/${DB_PASSWORD}/" wp-config.php
+sed -i "s/localhost/${DB_HOST}/" wp-config.php
+
+# Simple health check
+echo "OK" > /var/www/html/health.txt
+
+# Restart
+systemctl restart httpd
