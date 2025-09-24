@@ -10,9 +10,11 @@ on:
         description: 'Terraform Action to Perform'
         type: choice
         options:
-        - Terraform_apply
-        - Terraform_destroy
-        default: Terraform_apply 
+          - Terraform_apply
+          - Terraform_destroy
+        default: Terraform_apply   # Default to apply if nothing is selected
+
+# Global environment variables (used by both jobs)
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
   TF_IN_AUTOMATION: true
@@ -30,12 +32,11 @@ jobs:
     steps:
       # Step 1: Check out the repository code
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2  # NOTE: works, but can upgrade to @v4
 
       # Step 2: Set up AWS credentials for authentication
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-      
+        uses: aws-actions/configure-aws-credentials@v2  # NOTE: works, but v4 is newer
         with:
           # Using GitHub secrets for secure credential storage
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} # Secret variable
@@ -44,20 +45,59 @@ jobs:
 
       # Step 3: Install Terraform
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2.0.2
+        uses: hashicorp/setup-terraform@v2.0.2  # NOTE: can upgrade to @v3
         with:
           terraform_version: 1.1.9 # Specifies Terraform version to use
           terraform_wrapper: false
 
       # Step 4: Initialize Terraform working directory
       - name: Terraform Init
-        run: terraform init
+        run: terraform init -input=false # Added -input=false to avoid prompts
 
       # Step 5: Preview the infrastructure changes
       - name: Terraform Plan
-        run: terraform plan
+        run: terraform plan -no-color # Added -no-color for clean logs
 
       # Step 6: Apply the infrastructure changes
       - name: Terraform Apply
-        run: terraform apply -auto-approve # Auto-approve flag skips manual confirmation
-        
+        run: terraform apply -auto-approve -input=false # Added -input=false
+
+      # Step 7: Show Terraform outputs (optional)
+      - name: Terraform Output
+        run: terraform output -no-color || true
+
+  # Job for destroying Terraform-managed infrastructure
+  terraform_destroy:
+    name: "Terraform_destroy"
+    # Condition to run this job only when 'Terraform_destroy' is selected
+    if: ${{ github.event.inputs.action == 'Terraform_destroy' }}
+    # Specifies the type of runner to use
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out the repository code
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Step 2: Set up AWS credentials for authentication
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Step 3: Install Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2.0.2
+        with:
+          terraform_version: 1.1.9
+          terraform_wrapper: false
+
+      # Step 4: Initialize Terraform working directory
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      # Step 5: Destroy the infrastructure
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve -input=false
