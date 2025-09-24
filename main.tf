@@ -191,3 +191,12 @@ output "ec2_public_ip" {
 output "rds_endpoint" {
   value = aws_db_instance.wordpress_db.endpoint
 }
+terraform {
+  backend "s3" {
+    bucket = "rit-jc-tfstate"  # <-- your bucket
+    key    = "wordpress/terraform.tfstate"
+    region = "us-east-1"                # <-- your region
+    encrypt      = true                 # optional but good
+    use_lockfile = true                 # S3-native locking
+  }
+}
