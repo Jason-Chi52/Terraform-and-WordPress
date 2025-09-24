@@ -156,12 +156,9 @@ resource "aws_instance" "wordpress_ec2" {
 
 # DB Subnet Group
 resource "aws_db_subnet_group" "wordpress_db_subnet_group" {
-  name       = "wordpress_db_subnet_group"
+  name       = "wordpress_db_subnet_group_jc"  # <- unique name
   subnet_ids = [aws_subnet.private_subnet.id, aws_subnet.public_subnet.id]
-
-  tags = {
-    Name = "WordPress DB Subnet Group"
-  }
+  tags = { Name = "WordPress DB Subnet Group" }
 }
 
 # RDS Instance
