@@ -24,36 +24,40 @@ jobs:
   # Job for applying Terraform configurations
   terraform_apply:
     name: "Terraform_apply"
-    # Run this job only when 'Terraform_apply' is selected
+    # Condition to run this job only when 'Terraform_apply' is selected
     if: ${{ github.event.inputs.action == 'Terraform_apply' }}
-    # Type of runner to use
+    # Specifies the type of runner to use
     runs-on: ubuntu-latest
 
     steps:
       # Step 1: Check out the repository code
       - name: Checkout repository
-        uses: actions/checkout@v2  # (v4 is newer, v2 is fine for class)
+        uses: actions/checkout@v2  # (v4 is newer; v2 is fine for class)
 
       # Step 2: Set up AWS credentials for authentication
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2  # (v4 is newer, v2 is fine)
+        uses: aws-actions/configure-aws-credentials@v2  # (v4 is newer)
         with:
           # Using GitHub secrets for secure credential storage
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}     # Secret variable
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # Secret variable
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}       # Secret variable
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}# Secret variable
           aws-region: ${{ env.AWS_REGION }}  # Reference the repository variable
 
       # Step 3: Install Terraform
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2.0.2  # (v3 is newer, v2.0.2 is fine)
+        uses: hashicorp/setup-terraform@v2.0.2  # (v3 is newer)
         with:
-          terraform_version: 1.1.9  # Specifies Terraform version to use
+          terraform_version: 1.1.9 # Specifies Terraform version to use
           terraform_wrapper: false
 
-      # Step 4: Initialize Terraform working directory
-      # NOTE: include -migrate-state so backend migration can proceed non-interactively
+      # Step 3.5: Clean any local state so init doesn't try to migrate (avoids prompts)
+      - name: Clean local Terraform state
+        run: |
+          rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup || true
+
+      # Step 4: Initialize Terraform working directory (fresh against S3 backend)
       - name: Terraform Init
-        run: terraform init -migrate-state -input=false
+        run: terraform init -input=false
 
       # Step 5: Preview the infrastructure changes
       - name: Terraform Plan
@@ -70,9 +74,9 @@ jobs:
   # Job for destroying Terraform-managed infrastructure
   terraform_destroy:
     name: "Terraform_destroy"
-    # Run this job only when 'Terraform_destroy' is selected
+    # Condition to run this job only when 'Terraform_destroy' is selected
     if: ${{ github.event.inputs.action == 'Terraform_destroy' }}
-    # Type of runner to use
+    # Specifies the type of runner to use
     runs-on: ubuntu-latest
 
     steps:
@@ -95,10 +99,14 @@ jobs:
           terraform_version: 1.1.9
           terraform_wrapper: false
 
-      # Step 4: Initialize Terraform working directory
-      # NOTE: include -migrate-state here too, so destroy finds the S3 state
+      # Step 3.5: Clean any local state to ensure we read state from S3
+      - name: Clean local Terraform state
+        run: |
+          rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup || true
+
+      # Step 4: Initialize Terraform (reads remote state from S3)
       - name: Terraform Init
-        run: terraform init -migrate-state -input=false
+        run: terraform init -input=false
 
       # Step 5: Destroy the infrastructure
       - name: Terraform Destroy
