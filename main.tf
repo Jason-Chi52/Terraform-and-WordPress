@@ -123,10 +123,13 @@ resource "aws_instance" "wordpress_ec2" {
   key_name               = "JC-AWS2024-KEY"
 
   # Make sure this file exists in the same folder as main.tf
-  user_data = file("${path.module}/wp_rds_install.sh")
+  user_data = templatefile("${path.module}/wp_rds_install.sh.tftpl", {
+    DB_NAME     = "wordpressdb"
+    DB_USER     = "admin"
+    DB_PASSWORD = "Cyq716585!"                     # <-- use your real password / or a var
+    DB_HOST     = aws_db_instance.wordpress_db.address
+  })
 
-  tags = { Name = "WordPress EC2 Instance" }
-}
 
 # ---------------- RDS ----------------
 resource "aws_db_subnet_group" "wordpress_db_subnet_group" {
