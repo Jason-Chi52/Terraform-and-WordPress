@@ -87,15 +87,32 @@ resource "aws_security_group" "rds_sg" {
 }
 
 # ---------------- AMI ----------------
+# AMI Data Source (fix: multi-line filter blocks)
 data "aws_ami" "amazon_linux_2023" {
   most_recent = true
   owners      = ["amazon"]
 
-  filter { name = "name"                values = ["al2023-ami-2023*"] }
-  filter { name = "virtualization-type" values = ["hvm"] }
-  filter { name = "root-device-type"    values = ["ebs"] }
-  filter { name = "architecture"        values = ["x86_64"] }
+  filter {
+    name   = "name"
+    values = ["al2023-ami-2023*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  filter {
+    name   = "root-device-type"
+    values = ["ebs"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
 }
+
 
 # ---------------- EC2 (WordPress) ----------------
 resource "aws_instance" "wordpress_ec2" {
