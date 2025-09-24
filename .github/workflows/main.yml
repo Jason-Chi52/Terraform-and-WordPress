@@ -1,94 +1,73 @@
 name: "Github Actions Activity"
 
-# Defines when the workflow will run
 on:
-  # Manual trigger using GitHub Actions UI
+  # Manual trigger in the Actions UI
   workflow_dispatch:
     inputs:
-      # Input parameter to choose between apply or destroy actions
       action:
-        description: 'Terraform Action to Perform'
+        description: "Terraform Action to Perform"
         type: choice
         options:
           - Terraform_apply
           - Terraform_destroy
-        default: Terraform_apply   # Default to apply if nothing is selected
+        default: Terraform_apply
 
-# Global environment variables (used by both jobs)
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
   TF_IN_AUTOMATION: true
   TF_INPUT: 0
 
 jobs:
-  # Job for applying Terraform configurations
   terraform_apply:
     name: "Terraform_apply"
-    # Condition to run this job only when 'Terraform_apply' is selected
     if: ${{ github.event.inputs.action == 'Terraform_apply' }}
-    # Specifies the type of runner to use
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Check out the repository code
       - name: Checkout repository
-        uses: actions/checkout@v2  # (v4 is newer; v2 is fine for class)
+        uses: actions/checkout@v2   # v4 also OK
 
-      # Step 2: Set up AWS credentials for authentication
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2  # (v4 is newer)
+        uses: aws-actions/configure-aws-credentials@v2   # v4 also OK
         with:
-          # Using GitHub secrets for secure credential storage
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}        # Secret variable
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # Secret variable
-          aws-region: ${{ env.AWS_REGION }}                           # Reference the repository variable
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      # Step 3: Install Terraform
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2.0.2  # (v3 is newer)
+        uses: hashicorp/setup-terraform@v2.0.2           # v3 also OK
         with:
-          terraform_version: 1.1.9 # Specifies Terraform version to use
+          terraform_version: 1.1.9
           terraform_wrapper: false
 
-      # Step 3.5: Clean any local state so init doesn't try to migrate (avoids prompts)
+      # ensure this run never tries to migrate a local state
       - name: Clean local Terraform state
         run: |
           rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup || true
 
-      # Step 4: Initialize Terraform working directory (fresh against S3 backend)
-      - name: Terraform Init
-        run: terraform init -input=false
+      - name: Terraform Init (force backend)
+        run: terraform init -reconfigure -input=false
 
-      # Step 5: Preview the infrastructure changes
       - name: Terraform Plan
         run: terraform plan -no-color
 
-      # Step 6: Apply the infrastructure changes
       - name: Terraform Apply
         run: terraform apply -auto-approve -input=false
 
-      # Step 7: Show what ended up in state (proof Apply worked)
+      # prove resources exist in state (helps later if destroy shows 0)
       - name: List state resources (after apply)
         run: terraform state list || echo "No resources in state"
 
-      # Step 8: Show Terraform outputs (optional)
       - name: Terraform Output
         run: terraform output -no-color || true
 
-  # Job for destroying Terraform-managed infrastructure
   terraform_destroy:
     name: "Terraform_destroy"
-    # Condition to run this job only when 'Terraform_destroy' is selected
     if: ${{ github.event.inputs.action == 'Terraform_destroy' }}
-    # Specifies the type of runner to use
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Check out the repository code
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      # Step 2: Set up AWS credentials for authentication
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -96,26 +75,21 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Step 3: Install Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2.0.2
         with:
           terraform_version: 1.1.9
           terraform_wrapper: false
 
-      # Step 3.5: Clean any local state to ensure we read state from S3
       - name: Clean local Terraform state
         run: |
           rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup || true
 
-      # Step 4: Initialize Terraform (reads remote state from S3)
-      - name: Terraform Init
-        run: terraform init -input=false
+      - name: Terraform Init (force backend)
+        run: terraform init -reconfigure -input=false
 
-      # Step 5: Show what will be destroyed (proof state is loaded)
       - name: List state resources (before destroy)
         run: terraform state list || echo "No resources in state"
 
-      # Step 6: Destroy the infrastructure
       - name: Terraform Destroy
         run: terraform destroy -auto-approve -input=false
