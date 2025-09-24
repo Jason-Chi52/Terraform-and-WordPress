@@ -3,7 +3,7 @@
 ########################################
 terraform {
   backend "s3" {
-    bucket = "rit-jc-tfstate"          # <-- your bucket (must exist in us-east-1)
+    bucket = "rit-jc-tfstate"          # your bucket in us-east-1
     key    = "wordpress/terraform.tfstate"
     region = "us-east-1"
     encrypt = true
@@ -15,13 +15,30 @@ provider "aws" {
 }
 
 ########################################
-# Variables (quick inline; also see variables.tf for typed versions)
+# Variables (fixed: multi-line blocks)
 ########################################
-# You can move these to variables.tf; included inline for clarity.
-variable "key_name"     { type = string }
-variable "db_username"  { type = string  default = "admin" }
-variable "db_password"  { type = string  sensitive = true }
-variable "db_name"      { type = string  default = "wordpressdb" }
+variable "key_name" {
+  description = "EC2 key pair name"
+  type        = string
+}
+
+variable "db_username" {
+  description = "RDS master username"
+  type        = string
+  default     = "admin"
+}
+
+variable "db_password" {
+  description = "RDS master password"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_name" {
+  description = "WordPress database name"
+  type        = string
+  default     = "wordpressdb"
+}
 
 ########################################
 # Networking
@@ -108,7 +125,7 @@ resource "aws_security_group" "rds_sg" {
     from_port       = 3306
     to_port         = 3306
     protocol        = "tcp"
-    security_groups = [aws_security_group.ec2_sg.id] # allow from EC2 SG
+    security_groups = [aws_security_group.ec2_sg.id]
   }
 
   tags = { Name = "wordpress_rds_sg" }
@@ -128,11 +145,11 @@ data "aws_ami" "amazon_linux_2023" {
 }
 
 ########################################
-# RDS Subnet Group & Instance (MySQL)
+# RDS
 ########################################
 resource "aws_db_subnet_group" "wordpress_db_subnet_group" {
   name       = "wordpress_db_subnet_group"
-  # For class simplicity we use one private + one public. (Best practice: two privates)
+  # (For class simplicity) one private + one public subnet
   subnet_ids = [aws_subnet.private_subnet.id, aws_subnet.public_subnet.id]
   tags = { Name = "WordPress DB Subnet Group" }
 }
@@ -157,7 +174,7 @@ resource "aws_db_instance" "wordpress_db" {
 }
 
 ########################################
-# EC2 for WordPress (installs WP + points to RDS)
+# EC2 (WordPress) + user_data template
 ########################################
 resource "aws_instance" "wordpress_ec2" {
   ami                    = data.aws_ami.amazon_linux_2023.id
@@ -166,7 +183,6 @@ resource "aws_instance" "wordpress_ec2" {
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
   key_name               = var.key_name
 
-  # Render user data from template and pass DB values
   user_data = templatefile("${path.module}/wp_rds_install.sh.tftpl", {
     DB_NAME     = var.db_name
     DB_USER     = var.db_username
@@ -188,5 +204,4 @@ output "ec2_public_ip" {
 output "rds_endpoint" {
   value       = aws_db_instance.wordpress_db.address
   description = "RDS endpoint hostname"
-  sensitive   = false
 }
